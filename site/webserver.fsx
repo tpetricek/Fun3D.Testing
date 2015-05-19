@@ -1,17 +1,17 @@
-//#r "../packages/FSharp.Data/lib/net40/FSharp.Data.dll"
+#r "../packages/FSharp.Data/lib/net40/FSharp.Data.dll"
 #r "../packages/Suave/lib/net40/Suave.dll"
-//#r "../packages/FSharp.Compiler.Service/lib/net40/FSharp.Compiler.Service.dll"
+#r "../packages/FSharp.Compiler.Service/lib/net40/FSharp.Compiler.Service.dll"
 
-//open Microsoft.FSharp.Compiler.SourceCodeServices
-//open Microsoft.FSharp.Compiler.Interactive.Shell
-//open Microsoft.FSharp.Compiler.Ast
+open Microsoft.FSharp.Compiler.SourceCodeServices
+open Microsoft.FSharp.Compiler.Interactive.Shell
+open Microsoft.FSharp.Compiler.Ast
 open System.Text
 open System.IO
 
 // ------------------------------------------------------------------------------------------------
 // Agent that protects a specified resource
 // ------------------------------------------------------------------------------------------------
-(*
+
 /// Agent that allows only one caller to use the specified resource.
 /// This re-creates the resource after specified number of uses
 /// and it calls `cleanup` on it before abandoning it.
@@ -265,13 +265,13 @@ let shareSnippet jsonText = async {
 // ------------------------------------------------------------------------------------------------
 // Suave.io web server
 // ------------------------------------------------------------------------------------------------
-*)
+
 open System
 open Suave
 open Suave.Web
 open Suave.Http
 open Suave.Types
-(*
+
 /// Types of JSON values that we are returning from F# Compiler Service calls
 type JsonTypes = JsonProvider<"""{
     "declarations":
@@ -281,7 +281,7 @@ type JsonTypes = JsonProvider<"""{
     "methods":
       {"methods":[ "first info", "second info" ] }
   }""">
-*)
+
 /// Get parameters of an F# compiler service request. Returns
 /// a tuple with line, column & source (the first two may be optional)
 let getRequestParams (ctx:HttpContext) =
@@ -290,7 +290,7 @@ let getRequestParams (ctx:HttpContext) =
   ctx.request.queryParam "line" |> Option.bind tryAsInt,
   ctx.request.queryParam "col" |> Option.bind tryAsInt,
   sr.ReadToEnd()
-(*
+
 // This script is implicitly inserted before every source code we get
 let loadScript =
   [| "#load \"Fun3D.fsx\"\n"
@@ -304,11 +304,11 @@ let noCacheSuccess res =
   >>= Writers.setHeader "Pragma" "no-cache"
   >>= Writers.setHeader "Expires" "0"
   >>= Successful.OK(res)
-*)
+
 /// The main handler for Suave server!
-let serviceHandler checker fsi scriptFile ctx = async { //(checker:ResourceAgent<_>) (fsi:ResourceAgent<_>) scriptFile ctx = async {
+let serviceHandler (checker:ResourceAgent<_>) (fsi:ResourceAgent<_>) scriptFile ctx = async {
   match ctx.request.url.LocalPath, getRequestParams ctx with
-  (*
+  
   // Transform F# `source` into JavaScript and return it
   | "/run", (_, _, source) ->
       let! jscode = evalFunScript (scriptFile, source) checker |> fsi.Process
@@ -350,13 +350,12 @@ let serviceHandler checker fsi scriptFile ctx = async { //(checker:ResourceAgent
         |> checker.Process
       let res = [| for name, glyph, info in decls -> JsonTypes.Declaration(name, glyph, info) |]
       return! ctx |> noCacheSuccess (JsonTypes.Declarations(res).JsonValue.ToString())
-      *)
+  
   // Otherwise, just serve the files from 'web' using 'index.html' as default
   | _ ->
       let local = ctx.request.url.LocalPath
       let file = if local = "/" then "index.html" else local.Substring(1)
       let actualFile = Path.Combine(ctx.runtime.homeDirectory, "web", file)
-      printfn "Home: %s\nFile: %s\nCombined: %s" ctx.runtime.homeDirectory file actualFile
 
       let mime = Suave.Http.Writers.defaultMimeTypesMap(Path.GetExtension(actualFile))
       let setMime = 
@@ -377,18 +376,17 @@ let serviceHandler checker fsi scriptFile ctx = async { //(checker:ResourceAgent
 // ------------------------------------------------------------------------------------------------
 
 // Directory with FunScript binaries and 'Fun3D.fsx'
-//let funFolder = Path.Combine(__SOURCE_DIRECTORY__, "funscript")
-//let scriptFile = Path.Combine(__SOURCE_DIRECTORY__, "funscript/script.fsx")
+let funFolder = Path.Combine(__SOURCE_DIRECTORY__, "funscript")
+let scriptFile = Path.Combine(__SOURCE_DIRECTORY__, "funscript/script.fsx")
 
-(*
 let checker =
   ResourceAgent(Int32.MaxValue, fun () -> FSharpChecker.Create())
 let fsi =
   ResourceAgent(20,
     (fun () -> startSession funFolder loadScriptString),
     (fun fsi -> (fsi.Session :> IDisposable).Dispose()) )
-*)
-let app = serviceHandler () () () //scriptFile checker fsi scriptFile
+
+let app = serviceHandler checker fsi scriptFile
 
 // --------------------------------------------------------------------------------------
 // Start up Suave.io
