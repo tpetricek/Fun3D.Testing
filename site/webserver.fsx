@@ -306,9 +306,9 @@ let noCacheSuccess res =
   >>= Successful.OK(res)
 
 /// The main handler for Suave server!
-let serviceHandler (checker:ResourceAgent<_>) (fsi:ResourceAgent<_>) scriptFile ctx = async {
+let serviceHandler checker fsi scriptFile ctx = async { //(checker:ResourceAgent<_>) (fsi:ResourceAgent<_>) scriptFile ctx = async {
   match ctx.request.url.LocalPath, getRequestParams ctx with
-
+  (*
   // Transform F# `source` into JavaScript and return it
   | "/run", (_, _, source) ->
       let! jscode = evalFunScript (scriptFile, source) checker |> fsi.Process
@@ -350,7 +350,7 @@ let serviceHandler (checker:ResourceAgent<_>) (fsi:ResourceAgent<_>) scriptFile 
         |> checker.Process
       let res = [| for name, glyph, info in decls -> JsonTypes.Declaration(name, glyph, info) |]
       return! ctx |> noCacheSuccess (JsonTypes.Declarations(res).JsonValue.ToString())
-
+      *)
   // Otherwise, just serve the files from 'web' using 'index.html' as default
   | _ ->
       let webDir = Path.Combine(ctx.runtime.homeDirectory, "web")
@@ -368,13 +368,15 @@ let serviceHandler (checker:ResourceAgent<_>) (fsi:ResourceAgent<_>) scriptFile 
 let funFolder = Path.Combine(__SOURCE_DIRECTORY__, "funscript")
 let scriptFile = Path.Combine(__SOURCE_DIRECTORY__, "funscript/script.fsx")
 
+(*
 let checker =
   ResourceAgent(Int32.MaxValue, fun () -> FSharpChecker.Create())
 let fsi =
   ResourceAgent(20,
     (fun () -> startSession funFolder loadScriptString),
     (fun fsi -> (fsi.Session :> IDisposable).Dispose()) )
-let app = serviceHandler checker fsi scriptFile
+*)
+let app = serviceHandler () () scriptFile //checker fsi scriptFile
 
 // --------------------------------------------------------------------------------------
 // Start up Suave.io
@@ -394,4 +396,4 @@ let serverConfig =
     let port = getBuildParamOrDefault "port" "8083" |> Sockets.Port.Parse
     { defaultConfig with bindings = [ HttpBinding.mk HTTP IPAddress.Loopback port ] }
 
-startWebServer serverConfig app
+startWebServer { serverConfig with homeFolder = Some __SOURCE_DIRECTORY__ } app
